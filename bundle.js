@@ -109,7 +109,7 @@ Game.prototype.loop = function(newTime) {
 },{}],3:[function(require,module,exports){
 "use strict";
 
-const MS_PER_FRAME = 1000/8;
+const MS_PER_FRAME = 1000/4;
 
 /**
  * @module exports the Player class
@@ -131,6 +131,13 @@ function Player(position) {
   this.spritesheet.src = encodeURI('assets/PlayerSprite2.png');
   this.timer = 0;
   this.frame = 0;
+
+  var self = this;
+  window.onkeydown = function(event){
+      if(event.keyCode == 39 && self.state == "idle"){
+          self.state = "jumping";
+      }
+  }
 }
 
 /**
@@ -147,9 +154,22 @@ Player.prototype.update = function(time) {
         if(this.frame > 3) this.frame = 0;
       }
       break;
+    case "jumping":
+        this.timer += time;
+        this.x +=1;
+        if(this.timer > MS_PER_FRAME) {
+          this.timer = 0;
+          this.frame += 1;
+          if(this.frame > 3){
+              this.frame = 0;
+              this.state = "idle";
+          }
+        }
+      break;
     // TODO: Implement your player's update by state
   }
 }
+
 
 /**
  * @function renders the player into the provided context
@@ -168,6 +188,16 @@ Player.prototype.render = function(time, ctx) {
         this.x, this.y, this.width, this.height
       );
       break;
+    case "jumping":
+        ctx.drawImage(
+          // image
+          this.spritesheet,
+          // source rectangle
+          this.frame * 64, 0, this.width, this.height,
+          // destination rectangle
+          this.x, this.y, this.width, this.height
+        );
+        break;
     // TODO: Implement your player's redering according to state
   }
 }
