@@ -3,11 +3,24 @@
 /* Classes */
 const Game = require('./game.js');
 const Player = require('./player.js');
+const EntityManager = require('./entity-manager.js');
+const Car = require ('./car.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var player = new Player({x: 0, y: 240})
+var player = new Player({x: 0, y: 240});
+var em = new EntityManager();
+var level = 1;
+var cars = [];
+for(var i = 0; i < 2; i++){
+  cars.push(new Car(level,
+    Math.random()*20 + 100,
+    Math.random()*canvas.height
+  ));
+}
+
+
 
 /**
  * @function masterLoop
@@ -45,4 +58,8 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "lightblue";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   player.render(elapsedTime, ctx);
+  for(var i = 0; i < cars.length; i++){
+    cars[i].active = true;
+    cars[i].render;
+  }
 }

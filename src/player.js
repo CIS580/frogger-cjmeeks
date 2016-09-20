@@ -1,6 +1,6 @@
 "use strict";
 
-const MS_PER_FRAME = 1000/4;
+const MS_PER_FRAME = 1000/8;
 
 /**
  * @module exports the Player class
@@ -60,8 +60,6 @@ Player.prototype.update = function(time) {
     // TODO: Implement your player's update by state
   }
 }
-
-
 /**
  * @function renders the player into the provided context
  * {DOMHighResTimeStamp} time the elapsed time since the last frame

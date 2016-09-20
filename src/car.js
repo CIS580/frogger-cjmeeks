@@ -2,7 +2,7 @@
 
 module.exports = exports = Car;
 
-function Car(speed, x){
+function Car(speed, x, y){
     this.spritesheet = new Image();
     this.spritesheet.src = encodeURI('assets/cars_mini.svg');
     this.width = 200;

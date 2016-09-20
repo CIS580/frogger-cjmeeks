@@ -4,11 +4,24 @@
 /* Classes */
 const Game = require('./game.js');
 const Player = require('./player.js');
+const EntityManager = require('./entity-manager.js');
+const Car = require ('./car.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var player = new Player({x: 0, y: 240})
+var player = new Player({x: 0, y: 240});
+var em = new EntityManager();
+var level = 1;
+var cars = [];
+for(var i = 0; i < 2; i++){
+  cars.push(new Car(level,
+    Math.random()*20 + 100,
+    Math.random()*canvas.height
+  ));
+}
+
+
 
 /**
  * @function masterLoop
@@ -46,9 +59,101 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "lightblue";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   player.render(elapsedTime, ctx);
+  for(var i = 0; i < cars.length; i++){
+    cars[i].active = true;
+    cars[i].render;
+  }
 }
 
-},{"./game.js":2,"./player.js":3}],2:[function(require,module,exports){
+},{"./car.js":2,"./entity-manager.js":3,"./game.js":4,"./player.js":5}],2:[function(require,module,exports){
+"use strict";
+
+module.exports = exports = Car;
+
+function Car(speed, x, y){
+    this.spritesheet = new Image();
+    this.spritesheet.src = encodeURI('assets/cars_mini.svg');
+    this.width = 200;
+    this.height = 400;
+    this.speed = speed;
+    this.x = x;
+    this.y = 0;
+    this.active = false;
+
+    var self = this;
+    this.moving = function(time){
+        self.y +=1;
+    }
+}
+
+Car.prototype.update = function(time){
+    if(!this.active) return;
+    this.move(time);
+}
+
+Car.prototype.render = function(time, ctx){
+    if(!this.active) return;
+    ctx.drawImage(this.spritesheet, this.width-20,0,this.width,this.height,
+    this.x,this.y,this.width,this.height);
+}
+
+},{}],3:[function(require,module,exports){
+module.exports = exports = EntityManager;
+
+function EntityManager(width, height, cellSize){
+  this.worldWidth = width;
+  this.worldHeight = height;
+  this.cellSize = cellSize;
+  this.widthInCells = Math.ceil(width/cellSize);
+  this.numberOfCells = this.widthInCells * Math.ceil(height/cellSize);
+  this.cells = [];
+  for(var i =0; i<this.numberOfCells;i++){
+    this.cells[i] = [];
+  }
+}
+
+EntityManager.prototype.addEntity = function(entity){
+    var index = Math.floor(entity.x/this.cellSize);
+    this.cells[index].push(entity);
+}
+
+EntityManager.prototype.updateEntity = function(entity) {
+  this.cells.forEach(function(entity){
+   entity.update(elapsedTime);
+ });
+}
+
+EntityManager.prototype.render = function(elapsedTime, ctx) {
+  this.cells.forEach(function(entity){
+    entity.render(elapsedTime, ctx);
+  });
+  }
+
+
+function testForRectCollision(r1, r2) {
+  return !( r1.x > r2.x + r2.width ||
+            r1.x + r1.width < r2.width ||
+            r1.y > r2.y + r2.height ||
+            r1.y + r1.height < r2.y
+          );
+}
+
+EntityManager.prototype.queryRect = function(x, y, width, height) {
+  this.cells.filter(function(entity) {
+    return testForRectCollision(entity, {x: x, y: y, width: width, height: height});
+  });
+}
+
+EntityManager.prototype.processCollisions = function(callback) {
+  this.entities.forEach(function(entity1){
+    this.entities.forEach(function(entity2){
+      if(entity1 !== entity2 && testForRectCollision(entity1, entity1))
+        callback(entity1, entity2);
+    });
+  });
+}
+
+},{}],4:[function(require,module,exports){
 "use strict";
 
 /**
@@ -106,10 +211,10 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],3:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 
-const MS_PER_FRAME = 1000/4;
+const MS_PER_FRAME = 1000/8;
 
 /**
  * @module exports the Player class
@@ -169,8 +274,6 @@ Player.prototype.update = function(time) {
     // TODO: Implement your player's update by state
   }
 }
-
-
 /**
  * @function renders the player into the provided context
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
