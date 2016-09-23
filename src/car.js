@@ -3,28 +3,41 @@
 module.exports = exports = Car;
 
 function Car(speed, x, y){
-    this.spritesheet = new Image();
-    this.spritesheet.src = encodeURI('assets/cars_mini.svg');
-    this.width = 200;
-    this.height = 400;
+    this.carUp = new Image();
+    this.carUp.src = encodeURI('assets/car.png');
+    this.width = 75;
+    this.height = 125;
     this.speed = speed;
     this.x = x;
-    this.y = 0;
-    this.active = false;
+    this.y = y;
+    this.state = "up";
 
     var self = this;
-    this.moving = function(time){
-        self.y +=1;
+    this.moving = function(){
+        if(this.state == "down"){
+            this.y +=this.speed;
+        }
+        else if(this.state == "up"){
+            this.y -=this.speed;
+        }
+    }
+    this.determinDir = function(){
+        if((self.y + self.height) > 480){
+            self.state = "up";
+        }
+        else if(self.y < 0){
+            self.state = "down";
+        }
     }
 }
 
-Car.prototype.update = function(time){
-    if(!this.active) return;
-    this.move(time);
+Car.prototype.update = function(time, level){
+    this.determinDir();
+    this.moving();
+    this.speed = level;
 }
 
 Car.prototype.render = function(time, ctx){
-    if(!this.active) return;
-    ctx.drawImage(this.spritesheet, this.width-20,0,this.width,this.height,
+    ctx.drawImage(this.carUp, 0,0,this.width,this.height,
     this.x,this.y,this.width,this.height);
 }

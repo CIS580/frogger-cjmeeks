@@ -6,21 +6,30 @@ const Game = require('./game.js');
 const Player = require('./player.js');
 const EntityManager = require('./entity-manager.js');
 const Car = require ('./car.js');
+const Log = require ('./log.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
+var levelDom = document.getElementById('level');
+var livesDom = document.getElementById('lives');
 var game = new Game(canvas, update, render);
 var player = new Player({x: 0, y: 240});
+var log = new Log(level,0,0,1);
 var em = new EntityManager();
+var background = new Image();
+background.src = './assets/background.png'
 var level = 1;
 var cars = [];
+var logs = [];
+var livesLeft = 3;
+var gameEnd = false;
 for(var i = 0; i < 2; i++){
-  cars.push(new Car(level,
-    Math.random()*20 + 100,
-    Math.random()*canvas.height
-  ));
+  cars.push(new Car(level, ((i+1)*110) , Math.floor(Math.random()*480)));
 }
-
+var ycord = Math.floor(Math.random()*480);
+logs.push(new Log(level, 467, ycord));
+console.log(canvas.width);
+console.log(canvas.height);
 
 
 /**
@@ -44,7 +53,31 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-  player.update(elapsedTime);
+    if(!gameEnd){
+        player.update(elapsedTime);
+        cars.forEach(function(car){
+            car.update(elapsedTime, level);
+        });
+        logs.forEach(function(log){
+           log.update(elapsedTime);
+        });
+        if((player.x+player.width) > 100 && (player.x+player.width) < 185){
+            checkCollisionCars(cars[0]);
+        }
+        if((player.x+player.width) > 185 && (player.x+player.width)< 300){
+            checkCollisionCars(cars[1]);
+        }
+        //cars.forEach(checkCollisionCars);
+        if (player.x > 467 && (player.x+player.width) < 667){
+          logs.forEach(checkCollisionLog);
+        }
+        checkForNewLevel();
+    }
+
+  if(livesLeft < 1){
+    gameEnd = true;
+  }
+
   // TODO: Update the game objects
 }
 
@@ -56,44 +89,104 @@ function update(elapsedTime) {
   * @param {CanvasRenderingContext2D} ctx the context to render to
   */
 function render(elapsedTime, ctx) {
-  ctx.fillStyle = "lightblue";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  player.render(elapsedTime, ctx);
-  for(var i = 0; i < cars.length; i++){
-    cars[i].active = true;
-    cars[i].render;
+  if(gameEnd){
+      ctx.fillStyle = "blue";
+      ctx.fillRect(0,0, canvas.width, canvas.height);
+      ctx.fillStyle = "black";
+      ctx.font = "bold 30px Arial";
+      ctx.fillText("Game Over: level "+ level, 760/2, 480/2);
   }
+  else{
+      ctx.fillStyle = "lightblue";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(background, 0, 0);
+      cars.forEach(function(car){car.render(elapsedTime, ctx)});
+      logs.forEach(function(log){log.render(elapsedTime, ctx)});
+      player.render(elapsedTime, ctx);
+  }
+  levelDom.innerHTML = level;
+  livesDom.innerHTML = livesLeft;
 }
 
-},{"./car.js":2,"./entity-manager.js":3,"./game.js":4,"./player.js":5}],2:[function(require,module,exports){
+function checkCollisionCars(car){
+    var collision = false;
+    if(!((player.x + player.width) < car.x ||  player.x > (car.x + car.width) ||  (player.y + player.height) < car.y ||  player.y > (car.y + car.height))){
+      collision = true;
+    }
+    if(collision){
+        player.x = 0;
+        player.y = 240;
+        player.frame = 0;
+        player.state = "idle";
+        livesLeft --;
+    }
+}
+
+function checkCollisionLog(log){
+    var collision = false;
+    if(!((player.x + player.width) < log.x ||  player.x > (log.x + log.width) ||  (player.y + player.height) < log.y ||  player.y > (log.y + log.height))){
+        collision = true;
+    }
+    if(!collision){
+        player.x = 0;
+        player.y = 240;
+        player.frame = 0;
+        player.state = "idle";
+        livesLeft --;
+    }
+}
+function checkForNewLevel(){
+    if(player.x+64 > canvas.width){
+        level++;
+        player.x = 0;
+        player.y = 240;
+        player.frame = 0;
+        player.state = "idle";
+    }
+}
+
+},{"./car.js":2,"./entity-manager.js":3,"./game.js":4,"./log.js":5,"./player.js":6}],2:[function(require,module,exports){
 "use strict";
 
 module.exports = exports = Car;
 
 function Car(speed, x, y){
-    this.spritesheet = new Image();
-    this.spritesheet.src = encodeURI('assets/cars_mini.svg');
-    this.width = 200;
-    this.height = 400;
+    this.carUp = new Image();
+    this.carUp.src = encodeURI('assets/car.png');
+    this.width = 75;
+    this.height = 125;
     this.speed = speed;
     this.x = x;
-    this.y = 0;
-    this.active = false;
+    this.y = y;
+    this.state = "up";
 
     var self = this;
-    this.moving = function(time){
-        self.y +=1;
+    this.moving = function(){
+        if(this.state == "down"){
+            this.y +=this.speed;
+        }
+        else if(this.state == "up"){
+            this.y -=this.speed;
+        }
+    }
+    this.determinDir = function(){
+        if((self.y + self.height) > 480){
+            self.state = "up";
+        }
+        else if(self.y < 0){
+            self.state = "down";
+        }
     }
 }
 
-Car.prototype.update = function(time){
-    if(!this.active) return;
-    this.move(time);
+Car.prototype.update = function(time, level){
+    this.determinDir();
+    this.moving();
+    this.speed = level;
 }
 
 Car.prototype.render = function(time, ctx){
-    if(!this.active) return;
-    ctx.drawImage(this.spritesheet, this.width-20,0,this.width,this.height,
+    ctx.drawImage(this.carUp, 0,0,this.width,this.height,
     this.x,this.y,this.width,this.height);
 }
 
@@ -214,7 +307,48 @@ Game.prototype.loop = function(newTime) {
 },{}],5:[function(require,module,exports){
 "use strict";
 
-const MS_PER_FRAME = 1000/8;
+module.exports = exports = Log;
+
+function Log(speed, x, y){
+    this.image = new Image();
+    this.image.src = './assets/log.png';
+    this.speed = speed;
+    this.x = x;
+    this.y = y;
+    this.width = 200;
+    this.height = 200;
+    this.state = "up";
+    this.moving = function(){
+        if(this.state == "down"){
+            this.y +=this.speed;
+        }
+        else if(this.state == "up"){
+            this.y -=this.speed;
+        }
+    }
+    this.determinDir = function(){
+        if((this.y + this.height) > 480){
+            this.state = "up";
+        }
+        else if(this.y < 0){
+            this.state = "down";
+        }
+    }
+}
+Log.prototype.update = function(time){
+    this.determinDir();
+    this.moving();
+}
+
+Log.prototype.render = function(time, ctx){
+    ctx.drawImage(this.image, 0,0,this.width,this.height,
+    this.x,this.y,this.width,this.height);
+}
+
+},{}],6:[function(require,module,exports){
+"use strict";
+
+const MS_PER_FRAME = 1000/4;
 
 /**
  * @module exports the Player class
@@ -239,8 +373,15 @@ function Player(position) {
 
   var self = this;
   window.onkeydown = function(event){
+      event.preventDefault();
       if(event.keyCode == 39 && self.state == "idle"){
           self.state = "jumping";
+      }
+      else if(event.keyCode == 40 && self.state =="idle"){
+          self.state = "down";
+      }
+      else if(event.keyCode == 38 && self.state =="idle"){
+          self.state = "up";
       }
   }
 }
@@ -261,7 +402,7 @@ Player.prototype.update = function(time) {
       break;
     case "jumping":
         this.timer += time;
-        this.x +=1;
+        this.x +=2;
         if(this.timer > MS_PER_FRAME) {
           this.timer = 0;
           this.frame += 1;
@@ -271,6 +412,32 @@ Player.prototype.update = function(time) {
           }
         }
       break;
+    case "up":
+        this.timer += time;
+        this.y -=2;
+        if(this.timer > MS_PER_FRAME) {
+            this.timer = 0;
+            this.frame += 1;
+            if(this.frame > 3){
+                this.frame = 0;
+                this.state = "idle";
+            }
+        }
+        break;
+    case "down":
+        this.timer += time;
+        this.y +=2;
+        if(this.timer > MS_PER_FRAME) {
+            this.timer = 0;
+            this.frame += 1;
+            if(this.frame > 3){
+                this.frame = 0;
+                this.state = "idle";
+            }
+        }
+        break;
+
+
     // TODO: Implement your player's update by state
   }
 }
@@ -292,6 +459,26 @@ Player.prototype.render = function(time, ctx) {
       );
       break;
     case "jumping":
+        ctx.drawImage(
+          // image
+          this.spritesheet,
+          // source rectangle
+          this.frame * 64, 0, this.width, this.height,
+          // destination rectangle
+          this.x, this.y, this.width, this.height
+        );
+        break;
+    case "up":
+        ctx.drawImage(
+          // image
+          this.spritesheet,
+          // source rectangle
+          this.frame * 64, 0, this.width, this.height,
+          // destination rectangle
+          this.x, this.y, this.width, this.height
+        );
+        break;
+    case "down":
         ctx.drawImage(
           // image
           this.spritesheet,
